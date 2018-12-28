@@ -1,9 +1,10 @@
 package OOP.Tests;
 
+import org.junit.Test;
 import OOP.Provided.OOPAssertionFailure;
 import OOP.Provided.OOPExpectedException;
 import OOP.Solution.*;
-import org.junit.Test;
+
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;

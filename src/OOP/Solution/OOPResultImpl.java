@@ -12,4 +12,9 @@ public class OOPResultImpl implements OOPResult {
     public String getMessage() {
         return null;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        return super.equals(obj);
+    }
 }

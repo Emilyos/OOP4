@@ -3,27 +3,41 @@ package OOP.Solution;
 import OOP.Provided.OOPExpectedException;
 
 public class OOPExpectedExceptionImpl implements OOPExpectedException {
+
+    private Class<? extends Exception> expected;
+    private String message = "";
+
+    private OOPExpectedExceptionImpl(Class<? extends Exception> expected) {
+        this.expected = expected;
+    }
+
     @Override
     public Class<? extends Exception> getExpectedException() {
-        return null;
+        return expected;
     }
 
     @Override
     public OOPExpectedException expect(Class<? extends Exception> expected) {
-        return null;
+        this.expected = expected;
+        return this;
     }
 
     @Override
     public OOPExpectedException expectMessage(String msg) {
-        return null;
+        if (this == none()) {
+            return null;
+        }
+        message = msg;
+        return this;
     }
 
     @Override
     public boolean assertExpected(Exception e) {
-        return false;
+        if (expected == null) return false;
+        return e.getClass() == expected && e.getMessage() == message;
     }
 
-    public static OOPExpectedException none(){
-        return null;
+    public static OOPExpectedException none() {
+        return new OOPExpectedExceptionImpl(null);
     }
 }

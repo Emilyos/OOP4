@@ -1,5 +1,6 @@
 package OOP.Tests;
 
+import org.codehaus.groovy.runtime.InvokerInvocationException;
 import org.junit.Test;
 import OOP.Provided.OOPAssertionFailure;
 import OOP.Provided.OOPExpectedException;
@@ -32,8 +33,9 @@ public class ExampleTest {
 
         private int field = 0;
 
+
         @OOPBefore({"test1"})
-        public void beforeFirstTest() {
+        public void beforeFirstTest() throws Exception {
             this.field = 123;
         }
 
@@ -55,7 +57,7 @@ public class ExampleTest {
         @OOPTest(order = 3)
         public void testThrows() throws Exception {
             expected.expect(Exception.class)
-                    .expectMessage("rror messag");
+                    .expectMessage("error message");
             throw new Exception("error message");
         }
 

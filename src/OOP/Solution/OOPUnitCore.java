@@ -6,6 +6,7 @@ import OOP.Provided.OOPExceptionMismatchError;
 import OOP.Provided.OOPExpectedException;
 import OOP.Provided.OOPResult;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -35,7 +36,9 @@ public class OOPUnitCore {
         }
         Object instance = null;
         try {
-            instance = testClass.getConstructor().newInstance();
+            Constructor<?> ctor = testClass.getDeclaredConstructor();
+            ctor.setAccessible(true);
+            instance = ctor.newInstance();
         } catch (Exception ignore) {
             return null;
         }
@@ -48,18 +51,16 @@ public class OOPUnitCore {
             try {
                 runBeforeMethods(testMethod, testClass, instance);
             } catch (Exception e) {
-                System.out.print(e.getMessage());
                 testResults.put(testMethod.getName(), new OOPResultImpl(OOPResult.OOPTestResult.ERROR, e.getMessage()));
                 continue;
             }
 
             OOPResult result = testMethod(testMethod, instance, testClass);
             testResults.put(testMethod.getName(), result);
-
             try {
-
+                runAfterMethods(testMethod, testClass, instance);
             } catch (Exception e) {
-
+                testResults.put(testMethod.getName(), new OOPResultImpl(OOPResult.OOPTestResult.ERROR, e.getMessage()));
             }
         }
 
@@ -81,10 +82,17 @@ public class OOPUnitCore {
         String message = "";
         boolean coughtException = false;
         try {
+            if (expectedException != null) { //
+                expectedException.setAccessible(true);
+                expectedException.set(instance, OOPExpectedExceptionImpl.none());
+            }
             method.invoke(instance);
-            expectedException.setAccessible(true);
-            OOPExpectedException exception = (OOPExpectedException) expectedException.get(instance);
-            if (exception.getExpectedException() != null) {
+            OOPExpectedException exception = null;
+            if (expectedException != null) {
+                expectedException.setAccessible(true);
+                exception = (OOPExpectedException) expectedException.get(instance);
+            }
+            if (exception != null && exception.getExpectedException() != null) {
                 result = OOPResult.OOPTestResult.ERROR;
             } else {
                 result = OOPResult.OOPTestResult.SUCCESS;
@@ -113,9 +121,9 @@ public class OOPUnitCore {
                             result = OOPResult.OOPTestResult.SUCCESS;
                             message = null;
                         } else {
-                            result = OOPResult.OOPTestResult.EXPECTED_EXCEPTION_MISMATCH;
                             Class<? extends Exception> fd = exception.getExpectedException();
-                            message = new OOPExceptionMismatchError(fd,
+                            result = fd == null ? OOPResult.OOPTestResult.ERROR : OOPResult.OOPTestResult.EXPECTED_EXCEPTION_MISMATCH;
+                            message = fd == null ? getExceptionClassName(e) : new OOPExceptionMismatchError(fd,
                                     ((Exception) e.getCause()).getClass()).getMessage();
                         }
                     } catch (IllegalAccessException ignore) {
@@ -142,12 +150,30 @@ public class OOPUnitCore {
 
     private static void runBeforeMethods(Method method, Class<?> testClass, Object instance) throws Exception {
         Stack<Method> beforeMethods = getBeforeMethodsFor(method, testClass);
-        //TODO do backup?s
+
         while (!beforeMethods.empty()) {
             try {
-                beforeMethods.pop().invoke(instance);
+                Method methodBefore = beforeMethods.pop();
+                OOPBackup.getInstance().backup(instance, "before");
+                methodBefore.invoke(instance);
             } catch (IllegalAccessException ignore) {
             } catch (InvocationTargetException cause) {
+                OOPBackup.getInstance().recover(instance, "before");
+                throw new Exception(getExceptionClassName(cause));
+            }
+        }
+    }
+
+    private static void runAfterMethods(Method method, Class<?> testClass, Object instance) throws Exception {
+        Stack<Method> afterMethods = getAfterMethodsFor(method, testClass);
+        while (!afterMethods.empty()) {
+            try {
+                Method methodAfter = afterMethods.pop();
+                OOPBackup.getInstance().backup(instance, "after");
+                methodAfter.invoke(instance);
+            } catch (IllegalAccessException ignore) {
+            } catch (InvocationTargetException cause) {
+                OOPBackup.getInstance().recover(instance, "after");
                 throw new Exception(getExceptionClassName(cause));
             }
         }
@@ -163,7 +189,7 @@ public class OOPUnitCore {
         Stack<Method> result = new Stack<>();
         Class<?> currentClass = clazz;
         while (isOOPTestClass(currentClass)) {
-            List<Method> methods = Arrays.stream(clazz.getDeclaredMethods())
+            List<Method> methods = Arrays.stream(currentClass.getDeclaredMethods())
                     .filter(OOPUnitCore::isOOPSetupMethod)
                     .collect(Collectors.toList());
             if (!methods.isEmpty() && result.search(methods.get(0)) == -1) {
@@ -183,9 +209,11 @@ public class OOPUnitCore {
         boolean isOrdered = clazz.getAnnotation(OOPTestClass.class).value() == OOPTestClass.OOPTestClassType.ORDERED;
         Class<?> testClass = clazz;
         while (isOOPTestClass(testClass)) {
-            Set<Method> testMethods = Arrays.stream(clazz.getDeclaredMethods()).filter(method -> {
+            Set<Method> testMethods = Arrays.stream(testClass.getDeclaredMethods()).filter(method -> {
                 if (!isOOPTestMethod(method)) return false;
-                return tag == null || tag.isEmpty() || method.getAnnotation(OOPTest.class).tag().equals(tag);
+                if (!(tag == null || tag.isEmpty() || method.getAnnotation(OOPTest.class).tag().equals(tag)))
+                    return false;
+                return !unordered.contains(method) && !ordered.contains(method);
             }).collect(Collectors.toSet());
             if (!isOrdered) {
                 unordered.addAll(testMethods);
@@ -216,7 +244,7 @@ public class OOPUnitCore {
                 if (!isOOPBeforeMethod(m)) return false;
                 for (String s : m.getAnnotation(OOPBefore.class).value()) {
                     if (s.equals(name)) {
-                        return true;
+                        return !result.contains(m);
                     }
                 }
                 return false;
@@ -241,7 +269,7 @@ public class OOPUnitCore {
                 if (!isOOPAfterMethod(m)) return false;
                 for (String s : m.getAnnotation(OOPAfter.class).value()) {
                     if (s.equals(name)) {
-                        return true;
+                        return !result.contains(m);
                     }
                 }
                 return false;

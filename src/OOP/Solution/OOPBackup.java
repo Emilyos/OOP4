@@ -1,7 +1,9 @@
 package OOP.Solution;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 
 public class OOPBackup {
@@ -59,7 +61,9 @@ public class OOPBackup {
         if (instance == null) return null;
         if (instance instanceof Cloneable) { //supports clone
             try {
-                return instance.getClass().getMethod("clone").invoke(instance);
+                Method clone = instance.getClass().getDeclaredMethod("clone");
+                clone.setAccessible(true);
+                return clone.invoke(instance);
             } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException ignore) {
             }
         }
@@ -70,9 +74,12 @@ public class OOPBackup {
     private Object getCopyInstance(Object instance) {
         if (instance == null) return null;
         try {
-            return instance.getClass().getConstructor(instance.getClass()).newInstance(instance);
+            Constructor<?> declaredConstructor = instance.getClass().getDeclaredConstructor(instance.getClass());
+            declaredConstructor.setAccessible(true);
+            return declaredConstructor.newInstance(instance);
         } catch (NoSuchMethodException | InvocationTargetException
                 | InstantiationException | IllegalAccessException ignore) {
+            ignore.getCause();
 
         }
         return null;

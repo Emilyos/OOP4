@@ -49,10 +49,8 @@ public class OOPUnitCore {
         List<Method> testMethods = getTestMethods(testClass, tag);
         for (Method testMethod : testMethods) {
             try {
-                OOPBackup.getInstance().backup(instance, "before");
                 runBeforeMethods(testMethod, testClass, instance);
             } catch (Exception e) {
-                OOPBackup.getInstance().recover(instance, "before");
                 testResults.put(testMethod.getName(), new OOPResultImpl(OOPResult.OOPTestResult.ERROR, e.getMessage()));
                 continue;
             }
@@ -60,10 +58,8 @@ public class OOPUnitCore {
             OOPResult result = testMethod(testMethod, instance, testClass);
             testResults.put(testMethod.getName(), result);
             try {
-                OOPBackup.getInstance().backup(instance, "after");
                 runAfterMethods(testMethod, testClass, instance);
             } catch (Exception e) {
-                OOPBackup.getInstance().recover(instance, "after");
                 testResults.put(testMethod.getName(), new OOPResultImpl(OOPResult.OOPTestResult.ERROR, e.getMessage()));
             }
         }
@@ -160,10 +156,12 @@ public class OOPUnitCore {
             try {
                 Method methodBefore = beforeMethods.pop();
                 methodBefore.setAccessible(true);
+                OOPBackup.getInstance().backup(instance, "before");
                 methodBefore.invoke(instance);
             } catch (IllegalAccessException ignore) {
 
             } catch (InvocationTargetException cause) {
+                OOPBackup.getInstance().recover(instance, "before");
                 throw new Exception(getExceptionClassName(cause));
             }
         }
@@ -175,9 +173,11 @@ public class OOPUnitCore {
             try {
                 Method methodAfter = afterMethods.pop();
                 methodAfter.setAccessible(true);
+                OOPBackup.getInstance().backup(instance, "after");
                 methodAfter.invoke(instance);
             } catch (IllegalAccessException ignore) {
             } catch (InvocationTargetException cause) {
+                OOPBackup.getInstance().recover(instance, "after");
                 throw new Exception(getExceptionClassName(cause));
             }
         }

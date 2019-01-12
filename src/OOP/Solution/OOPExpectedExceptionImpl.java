@@ -37,6 +37,9 @@ public class OOPExpectedExceptionImpl implements OOPExpectedException {
     @Override
     public boolean assertExpected(Exception e) {
         if (expected == null || !isSubException(e)) return false;
+        if (e.getMessage() == null) {
+            return expectedMessages.isEmpty();
+        }
         return expectedMessages.stream().allMatch(expectedMessage -> e.getMessage().contains(expectedMessage));
     }
 

@@ -15,9 +15,13 @@ import java.util.stream.Collectors;
 
 public class OOPUnitCore {
     public static void assertEquals(Object expected, Object actual) {
-        if (!(expected.equals(actual))) {
+        if ((expected == null && actual != null) || (expected != null && actual == null)) {
             throw new OOPAssertionFailure(expected, actual);
         }
+        if (expected != null && actual != null)
+            if (!(expected.equals(actual))) {
+                throw new OOPAssertionFailure(expected, actual);
+            }
     }
 
     public static void fail() {
@@ -31,7 +35,7 @@ public class OOPUnitCore {
 
 
     public static OOPTestSummary runClass(Class<?> testClass, String tag) {
-        if (!isOOPTestClass(testClass)) {
+        if (!isOOPTestClass(testClass) || tag == null) {
             throw new IllegalArgumentException();
         }
         Object instance = null;
@@ -196,7 +200,7 @@ public class OOPUnitCore {
             List<Method> methods = Arrays.stream(currentClass.getDeclaredMethods())
                     .filter(OOPUnitCore::isOOPSetupMethod)
                     .collect(Collectors.toList());
-            if (!methods.isEmpty() && result.search(methods.get(0)) == -1) {
+            if (!methods.isEmpty() && result.stream().noneMatch(method -> method.getName().equals(methods.get(0).getName()))) {
                 result.push(methods.get(0));
             }
             currentClass = currentClass.getSuperclass();
@@ -248,7 +252,7 @@ public class OOPUnitCore {
                 if (!isOOPBeforeMethod(m)) return false;
                 for (String s : m.getAnnotation(OOPBefore.class).value()) {
                     if (s.equals(name)) {
-                        return !result.contains(m);
+                        return result.stream().noneMatch(m1 -> m1.getName().equals(m.getName()));
                     }
                 }
                 return false;
@@ -273,7 +277,7 @@ public class OOPUnitCore {
                 if (!isOOPAfterMethod(m)) return false;
                 for (String s : m.getAnnotation(OOPAfter.class).value()) {
                     if (s.equals(name)) {
-                        return !result.contains(m);
+                        return result.stream().noneMatch(m1 -> m1.getName().equals(m.getName()));
                     }
                 }
                 return false;

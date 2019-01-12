@@ -195,15 +195,19 @@ public class OOPUnitCore {
      */
     private static Stack<Method> getSetupMethods(Class<?> clazz) {
         Stack<Method> result = new Stack<>();
-        Class<?> currentClass = clazz;
-        while (isOOPTestClass(currentClass)) {
-            List<Method> methods = Arrays.stream(currentClass.getDeclaredMethods())
+        Class<?> testClass = clazz;
+        while (testClass != null) {
+            if (!isOOPTestClass(testClass)) {
+                testClass = testClass.getSuperclass();
+                continue;
+            }
+            List<Method> methods = Arrays.stream(testClass.getDeclaredMethods())
                     .filter(OOPUnitCore::isOOPSetupMethod)
                     .collect(Collectors.toList());
             if (!methods.isEmpty() && result.stream().noneMatch(method -> method.getName().equals(methods.get(0).getName()))) {
                 result.push(methods.get(0));
             }
-            currentClass = currentClass.getSuperclass();
+            testClass = testClass.getSuperclass();
         }
         return result;
     }
@@ -216,7 +220,11 @@ public class OOPUnitCore {
         HashSet<Method> ordered = new HashSet<>();
         boolean isOrdered = clazz.getAnnotation(OOPTestClass.class).value() == OOPTestClass.OOPTestClassType.ORDERED;
         Class<?> testClass = clazz;
-        while (isOOPTestClass(testClass)) {
+        while (testClass != null) {
+            if (!isOOPTestClass(testClass)) {
+                testClass = testClass.getSuperclass();
+                continue;
+            }
             Set<Method> testMethods = Arrays.stream(testClass.getDeclaredMethods()).filter(method -> {
                 if (!isOOPTestMethod(method)) return false;
                 if (!(tag == null || tag.isEmpty() || method.getAnnotation(OOPTest.class).tag().equals(tag)))
@@ -247,7 +255,11 @@ public class OOPUnitCore {
         String name = method.getName();
         Stack<Method> result = new Stack<>();
         Class<?> testClass = clazz;
-        while (isOOPTestClass(testClass)) {
+        while (testClass != null) {
+            if (!isOOPTestClass(testClass)) {
+                testClass = testClass.getSuperclass();
+                continue;
+            }
             result.addAll(Arrays.stream(testClass.getDeclaredMethods()).filter(m -> {
                 if (!isOOPBeforeMethod(m)) return false;
                 for (String s : m.getAnnotation(OOPBefore.class).value()) {
@@ -272,7 +284,11 @@ public class OOPUnitCore {
         String name = method.getName();
         Stack<Method> result = new Stack<>();
         Class<?> testClass = clazz;
-        while (isOOPTestClass(testClass)) {
+        while (testClass != null) {
+            if (!isOOPTestClass(testClass)) {
+                testClass = testClass.getSuperclass();
+                continue;
+            }
             result.addAll(Arrays.stream(testClass.getDeclaredMethods()).filter(m -> {
                 if (!isOOPAfterMethod(m)) return false;
                 for (String s : m.getAnnotation(OOPAfter.class).value()) {
